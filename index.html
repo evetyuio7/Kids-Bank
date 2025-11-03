@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Kids Bank</title>
+  <style>
+    :root{
+      --bg:#0e1116; --panel:#151a22; --panel-2:#1a2130; --ink:#ebf2ff; --muted:#a6b0c2; --brand:#6ee7ff; --brand-2:#7cfead; --warn:#ffb86b; --danger:#ff6b81;
+      --ok:#7cfead; --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background: radial-gradient(1200px 800px at 70% -10%, #1c2740 0%, transparent 50%),
+                 radial-gradient(1200px 800px at -10% 110%, #0d1529 0%, transparent 50%),
+                 var(--bg);
+      color:var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    .app{max-width:900px; margin:0 auto; padding:18px 14px 120px; position:relative}
+    .topbar{position:sticky; top:0; z-index:30; backdrop-filter: blur(10px); background:linear-gradient(180deg, rgba(10,14,22,.85), rgba(10,14,22,.35)); padding:14px 10px; margin: -18px -14px 8px; border-bottom:1px solid rgba(255,255,255,.05)}
+    .brand{display:flex; align-items:center; gap:10px}
+    .logo{width:42px; height:42px; border-radius:12px; background:
+      radial-gradient(80% 80% at 30% 20%, rgba(255,255,255,.35), transparent 60%),
+      linear-gradient(135deg, var(--brand), var(--brand-2));
+      box-shadow: 0 8px 24px rgba(124,254,173,.25), inset 0 0 0 1px rgba(255,255,255,.25);
+      display:grid; place-items:center; font-weight:800; color:#0f172a;
+      animation: float 4s ease-in-out infinite;
+    }
+    @keyframes float{0%{transform:translateY(0)}50%{transform:translateY(-4px)}100%{transform:translateY(0)}}
+    h1{font-size:20px; margin:0}
+
+    .cards{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:10px 0 16px}
+    @media (max-width:780px){ .cards{grid-template-columns:1fr} }
+
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)); border:1px solid rgba(255,255,255,.06); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px; position:relative; overflow:hidden}
+    .card::after{content:""; position:absolute; inset:auto -40% -40% auto; width:180px; height:180px; background: radial-gradient(closest-side, rgba(110,231,255,.18), transparent 70%); filter:blur(10px);}
+    .row{display:flex; align-items:center; justify-content:space-between; gap:12px}
+    .muted{color:var(--muted); font-size:12px}
+    .big{font-size:28px; font-weight:800; letter-spacing:.3px}
+    .chip{font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06)}
+
+    .tabs{display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; position:sticky; bottom:12px; left:0; right:0; margin:16px 0 0}
+    .tab{user-select:none; text-align:center; padding:12px 10px; background:var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:14px; box-shadow:var(--shadow); cursor:pointer; transition: transform .15s ease, background .2s ease}
+    .tab[aria-selected="true"], .tab:active{background:var(--panel-2); transform: translateY(-2px)}
+
+    .section{display:none}
+    .section.active{display:block}
+
+    .form{display:grid; gap:10px}
+    .input, select, .button{width:100%; padding:12px 12px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:12px; color:var(--ink); font-size:16px}
+    .button{cursor:pointer; font-weight:700; letter-spacing:.2px; background:linear-gradient(135deg, var(--brand), var(--brand-2)); color:#0b1220; border:none; box-shadow: 0 12px 30px rgba(110,231,255,.25); transition: transform .12s ease}
+    .button:active{transform:translateY(1px)}
+    .button.secondary{background: rgba(255,255,255,.06); color:var(--ink); border:1px solid rgba(255,255,255,.16); box-shadow:none}
+
+    .grid-2{display:grid; grid-template-columns: 1fr 1fr; gap:10px}
+    @media (max-width:640px){ .grid-2{grid-template-columns:1fr} }
+
+    .list{display:grid; gap:8px}
+    .log{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:12px}
+    .pill{padding:4px 8px; border-radius:999px; font-size:12px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12)}
+
+    .spark{position:absolute; inset:0; pointer-events:none}
+
+    /* Modal */
+    .modal{position:fixed; inset:0; background:rgba(4,7,12,.6); display:none; align-items:center; justify-content:center; z-index:100}
+    .modal.show{display:flex}
+    .modal .box{width:min(520px, 92vw); background:var(--panel-2); border:1px solid rgba(255,255,255,.06); border-radius:20px; padding:16px; box-shadow:var(--shadow)}
+
+    .kpi{display:grid; grid-template-columns: repeat(5, 1fr); gap:8px}
+    @media (max-width:640px){ .kpi{grid-template-columns:1fr 1fr} }
+
+    /* Toast */
+    .toast{position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:200; display:flex; flex-direction:column; gap:8px}
+    .toast .t{padding:10px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.15); box-shadow:var(--shadow); color:#0b1220; font-weight:700}
+    .t.ok{background:linear-gradient(135deg, #baf7d0, #7cfead)}
+    .t.warn{background:linear-gradient(135deg, #ffe3b6, #ffb86b)}
+    .t.err{background:linear-gradient(135deg, #ffc4cc, #ff6b81)}
+
+    /* Confetti */
+    .confetti{position:fixed; inset:0; pointer-events:none; overflow:hidden}
+    .confetti i{position:absolute; width:6px; height:10px; background:linear-gradient(180deg, var(--brand), var(--brand-2)); opacity:.9; top:-10px; border-radius:2px; animation: drop 1.2s ease-in forwards}
+    @keyframes drop{ to{ transform: translateY(110vh) rotate(260deg); opacity:0 } }
+
+    canvas{width:100%; height:200px; background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:12px}
+
+    .hint{font-size:12px; color:var(--muted)}
+  </style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">¥</div>
+      <div>
+        <h1>Kids Bank</h1>
+        <div class="muted">Track chores, earnings, spending — physical, digital & savings</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Balances -->
+  <div class="cards">
+    <div class="card">
+      <div class="row"><div class="muted">Total Balance</div>
+        <span class="chip" id="spentThisMonth">Spent this month: ¥0</span>
+      </div>
+      <div class="big" id="totalBalance">¥0</div>
+      <div class="row" style="margin-top:6px">
+        <div class="pill">Physical: <b id="physicalBalance">¥0</b></div>
+        <div class="pill">Digital: <b id="digitalBalance">¥0</b></div>
+        <div class="pill">Savings: <b id="savingsBalance">¥0</b></div>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <div class="pill" style="border-color:rgba(255,255,255,.2)">Loans O/S: <b id="loanOutstanding">¥0</b></div>
+        <div class="pill" id="netWorthPill">Net: <b id="netWorth">¥0</b></div>
+      </div>
+      <div class="spark" id="spark"></div>
+    </div>
+    <div class="card">
+      <div class="row"><div class="muted">Overview</div><span class="chip" id="periodLabel">This Month</span></div>
+      <div class="kpi" style="margin-top:6px">
+        <div class="pill">Earned: <b id="earnedPeriod">¥0</b></div>
+        <div class="pill">Spent: <b id="spentPeriod">¥0</b></div>
+        <div class="pill">Transfers: <b id="xferPeriod">¥0</b></div>
+        <div class="pill">Loan Repay: <b id="repayPeriod">¥0</b></div>
+        <div class="pill">Interest: <b id="interestPeriod">¥0</b></div>
+      </div>
+      <div class="hint" style="margin-top:8px">Filter range below in Dashboard → Charts</div>
+    </div>
+  </div>
+
+  <!-- Sections -->
+  <div class="card section active" id="dashboard">
+    <div class="row"><div class="muted">Dashboard</div></div>
+    <div class="grid-2" style="margin-top:8px">
+      <div>
+        <label class="muted">Balance Over Time</label>
+        <canvas id="chartBalance" width="600" height="220"></canvas>
+      </div>
+      <div>
+        <label class="muted">Spending by Category</label>
+        <canvas id="chartCategory" width="600" height="220"></canvas>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:10px">
+      <div>
+        <label class="muted">From</label>
+        <input type="date" class="input" id="fromDate"/>
+      </div>
+      <div>
+        <label class="muted">To</label>
+        <input type="date" class="input" id="toDate"/>
+      </div>
+    </div>
+    <button class="button secondary" style="margin-top:8px" id="applyRange">Apply Range</button>
+
+    <div style="margin-top:12px">
+      <div class="row"><div class="muted">Recent Activity</div><button class="button secondary" id="clearAll" style="width:auto">Reset (keeps PIN)</button></div>
+      <div class="list" id="logList" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <div class="card section" id="add">
+    <div class="row"><div class="muted">Add Entry</div><span class="chip">PIN required for earnings</span></div>
+    <div class="form" style="margin-top:8px">
+      <div class="grid-2">
+        <div>
+          <label class="muted">Type</label>
+          <select id="entryType" class="input">
+            <option value="earn">Earning (Chore)</option>
+            <option value="spend">Spending</option>
+          </select>
+        </div>
+        <div>
+          <label class="muted">Account</label>
+          <select id="entryAccount" class="input">
+            <option value="physical">Physical</option>
+            <option value="digital">Digital</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="muted">Amount (¥)</label>
+          <input id="entryAmount" class="input" type="number" min="0" step="1" placeholder="100"/>
+        </div>
+        <div>
+          <label class="muted">Category</label>
+          <select id="entryCategory" class="input">
+            <option>Chore</option>
+            <option>Snacks</option>
+            <option>Games</option>
+            <option>Stationery</option>
+            <option>Transport</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="muted">Description</label>
+        <input id="entryDesc" class="input" placeholder="e.g., Folding Clothes"/>
+      </div>
+      <div>
+        <label class="muted">Quick Presets</label>
+        <div id="presetRow" class="row" style="flex-wrap:wrap; gap:8px"></div>
+      </div>
+      <button class="button" id="saveEntry">Save Entry</button>
+      <div class="hint">Earnings and transfers are protected by your dad's 4-digit PIN. Savings can split earnings after confirmation.</div>
+    </div>
+  </div>
+
+  <div class="card section" id="transfer">
+    <div class="row"><div class="muted">Transfer</div><span class="chip">PIN required</span></div>
+    <div class="form" style="margin-top:8px">
+      <div class="grid-2">
+        <div>
+          <label class="muted">From</label>
+          <select id="xferFrom" class="input">
+            <option value="physical">Physical</option>
+            <option value="digital">Digital</option>
+            <option value="savings">Savings</option>
+          </select>
+        </div>
+        <div>
+          <label class="muted">To</label>
+          <select id="xferTo" class="input">
+            <option value="digital">Digital</option>
+            <option value="physical">Physical</option>
+            <option value="savings">Savings</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="muted">Amount (¥)</label>
+          <input id="xferAmount" class="input" type="number" min="0" step="1" placeholder="500"/>
+        </div>
+        <div>
+          <label class="muted">Reason</label>
+          <input id="xferDesc" class="input" placeholder="e.g., Move cash to Dad's card"/>
+        </div>
+      </div>
+      <button class="button" id="doTransfer">Transfer</button>
+      <div class="hint">Example: move from Physical → Digital when you hand cash to Dad and he pays with his card.</div>
+    </div>
+  </div>
+
+  <div class="card section" id="loans">
+    <div class="row"><div class="muted">Loans</div><span class="chip" id="loanLimits">Limits</span></div>
+    <div class="form" style="margin-top:8px">
+      <div class="grid-2">
+        <div>
+          <label class="muted">Loan Amount (¥)</label>
+          <input id="loanAmount" class="input" type="number" min="1" step="1" placeholder="500"/>
+        </div>
+        <div>
+          <label class="muted">Deposit To</label>
+          <select id="loanAcct" class="input">
+            <option value="digital">Digital</option>
+            <option value="physical">Physical</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="muted">Reason</label>
+        <input id="loanDesc" class="input" placeholder="e.g., Game purchase"/>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="muted">Interest % (per year)</label>
+          <input id="loanAPR" class="input" type="number" min="0" step="0.1" placeholder="0 (no interest)"/>
+        </div>
+        <div>
+          <label class="muted">Repay Amount (¥)</label>
+          <input id="repayAmt" class="input" type="number" min="1" step="1" placeholder="e.g., 200"/>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="muted">Repay From</label>
+          <select id="repayFrom" class="input">
+            <option value="digital">Digital</option>
+            <option value="physical">Physical</option>
+            <option value="savings">Savings</option>
+          </select>
+        </div>
+        <div style="display:flex; align-items:end"><button class="button secondary" id="repayBtn">Repay Loan</button></div>
+      </div>
+      <button class="button" id="takeLoan">Take Loan (PIN)</button>
+      <div class="hint">When you earn, <b>50%</b> of earnings automatically repay loans until fully paid. You can also repay anytime from balances.</div>
+      <div class="list" id="loanList" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div class="card section" id="savings">
+    <div class="row"><div class="muted">Savings</div><span class="chip" id="savingsStatus">Off</span></div>
+    <div class="form" style="margin-top:8px">
+      <div class="grid-2">
+        <div>
+          <label class="muted">Savings percent of each earning (%)</label>
+          <input id="savingsPct" class="input" type="number" min="0" max="100" step="1" placeholder="e.g., 20"/>
+        </div>
+        <div style="display:flex; align-items:end"><button class="button" id="saveSavings">Save Savings Settings</button></div>
+      </div>
+      <div class="hint">After each earning, you'll get a confirmation popup to apply this % to Savings. If you skip, 0% is saved for that earning.</div>
+    </div>
+  </div>
+
+  <div class="card section" id="presets">
+    <div class="row"><div class="muted">Presets</div><span class="chip" id="presetCount">0</span></div>
+    <div class="form" style="margin-top:8px">
+      <div class="grid-2">
+        <div><input id="pLabel" class="input" placeholder="Label e.g., Washing utensils"/></div>
+        <div><input id="pAmount" class="input" type="number" min="1" step="1" placeholder="100"/></div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <select id="pType" class="input">
+            <option value="earn">Earning</option>
+            <option value="spend">Spending</option>
+          </select>
+        </div>
+        <div>
+          <select id="pAcct" class="input">
+            <option value="physical">Physical</option>
+            <option value="digital">Digital</option>
+          </select>
+        </div>
+      </div>
+      <button class="button" id="addPreset">Add Preset</button>
+      <div id="presetList" class="list" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div class="card section" id="settings">
+    <div class="row"><div class="muted">Settings</div></div>
+    <div class="form" style="margin-top:8px">
+      <div class="grid-2">
+        <div>
+          <label class="muted">Current PIN</label>
+          <input id="setPinOld" class="input" placeholder="Old PIN" inputmode="numeric" maxlength="4"/>
+        </div>
+        <div>
+          <label class="muted">New PIN</label>
+          <input id="setPin1" class="input" placeholder="New PIN" inputmode="numeric" maxlength="4"/>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="muted">Confirm New PIN</label>
+          <input id="setPin2" class="input" placeholder="Confirm" inputmode="numeric" maxlength="4"/>
+        </div>
+        <div>
+          <label class="muted">Loan Limits</label>
+          <div class="row" style="gap:6px">
+            <input id="limitMaxLoans" class="input" type="number" min="0" step="1" placeholder="Max Loans"/>
+            <input id="limitMaxAmt" class="input" type="number" min="0" step="1" placeholder="Max per Loan (¥)"/>
+          </div>
+        </div>
+      </div>
+      <button class="button" id="savePin">Change PIN</button>
+      <div class="hint">PIN protects adding money, transfers, taking loans, and changing savings settings. Only Dad should know it.</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab" data-tab="dashboard" aria-selected="true">Dashboard</div>
+    <div class="tab" data-tab="add">Add</div>
+    <div class="tab" data-tab="transfer">Transfer</div>
+    <div class="tab" data-tab="loans">Loans</div>
+    <div class="tab" data-tab="savings">Savings</div>
+    <div class="tab" data-tab="presets">Presets</div>
+    <div class="tab" data-tab="settings">Settings</div>
+  </div>
+
+</div>
+
+<!-- PIN Modal -->
+<div class="modal" id="pinModal" role="dialog" aria-modal="true">
+  <div class="box">
+    <div class="row"><h2 style="margin:0">Enter PIN</h2><span class="chip" id="pinReason">Protected Action</span></div>
+    <div class="form" style="margin-top:10px">
+      <input id="pinInput" class="input" inputmode="numeric" maxlength="4" placeholder="4-digit PIN"/>
+      <div class="row" style="justify-content:flex-end; gap:8px">
+        <button class="button secondary" id="pinCancel" style="width:auto">Cancel</button>
+        <button class="button" id="pinOk" style="width:auto">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- First Run Modal (Set PIN once) -->
+<div class="modal" id="firstRun" role="dialog" aria-modal="true">
+  <div class="box">
+    <h2 style="margin:0">Welcome to Kids Bank 🎉</h2>
+    <p class="muted">Set a 4‑digit PIN only Dad knows. You will need it to add money, move money, take loans, or change savings.</p>
+    <div class="form">
+      <input id="frPin1" class="input" placeholder="Create PIN" inputmode="numeric" maxlength="4" />
+      <input id="frPin2" class="input" placeholder="Confirm PIN" inputmode="numeric" maxlength="4" />
+      <button class="button" id="frSave">Save PIN</button>
+    </div>
+  </div>
+</div>
+
+<!-- Savings confirmation modal -->
+<div class="modal" id="savingsConfirm" role="dialog" aria-modal="true">
+  <div class="box">
+    <h2 style="margin:0">Apply Savings?</h2>
+    <p class="muted" id="savingsConfirmText">Split X% of this earning into Savings?</p>
+    <div class="row" style="justify-content:flex-end; gap:8px">
+      <button class="button secondary" id="savingsSkip" style="width:auto">Skip this time</button>
+      <button class="button" id="savingsApply" style="width:auto">Apply</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="confetti" id="confetti"></div>
+
+<script>
+(function(){
+  const $ = (s)=>document.querySelector(s);
+  const $$ = (s)=>document.querySelectorAll(s);
+
+  // --- Storage ---
+  const STORE_KEY = 'kidsbank_v3_savings_loans';
+  const nowISO = ()=> new Date().toISOString();
+
+  const defaultPresets = [
+    // requested removals applied; only chores kept by default
+    {label:'Washing utensils', amount:100, type:'earn', acct:'physical'},
+    {label:'Folding Clothes', amount:100, type:'earn', acct:'physical'},
+  ];
+
+  const state = load();
+
+  function load(){
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw){
+      const init = {
+        balances:{physical:0, digital:0, savings:0},
+        transactions:[],
+        presets: defaultPresets,
+        pinHash: null,
+        firstRun: true,
+        loans: [], // {id, amount, remaining, date, desc, apr, lastAccrued}
+        limits: { maxLoans: 2, maxPerLoan: 2000 },
+        savings: { pct: 0 },
+        createdAt: nowISO()
+      };
+      localStorage.setItem(STORE_KEY, JSON.stringify(init));
+      return init;
+    }
+    const parsed = JSON.parse(raw);
+    // migrations
+    parsed.balances = parsed.balances || {physical:0, digital:0};
+    if(parsed.balances.savings===undefined) parsed.balances.savings=0;
+    parsed.savings = parsed.savings || { pct:0 };
+    parsed.loans = (parsed.loans||[]).map(L=> ({...L, lastAccrued: L.lastAccrued || L.date, apr: L.apr || 0}));
+    return parsed;
+  }
+
+  function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+
+  // --- Toast ---
+  function notify(msg, type='ok', ms=2200){
+    const box = $('#toast');
+    const el = document.createElement('div'); el.className = `t ${type}`; el.textContent = msg;
+    box.appendChild(el);
+    setTimeout(()=>{ el.style.transition='opacity .35s'; el.style.opacity='0'; setTimeout(()=> el.remove(), 360); }, ms);
+  }
+
+  // --- PIN utils ---
+  const hasher = async (txt)=>{
+    if(window.crypto && crypto.subtle){
+      const enc = new TextEncoder().encode('kidsbank:'+txt);
+      const buf = await crypto.subtle.digest('SHA-256', enc);
+      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+    // fallback
+    return btoa('kidsbank:'+txt);
+  }
+
+  async function setPin(pin){
+    state.pinHash = await hasher(pin);
+    state.firstRun = false;
+    save();
+  }
+
+  async function verifyPin(pin){
+    if(!state.pinHash) return false;
+    const h = await hasher(pin);
+    return h === state.pinHash;
+  }
+
+  // --- UI: Tabs ---
+  $$('.tab').forEach(tab=>{
+    tab.addEventListener('click',()=>{
+      $$('.tab').forEach(t=>t.setAttribute('aria-selected','false'));
+      tab.setAttribute('aria-selected','true');
+      const id = tab.dataset.tab;
+      $$('.section').forEach(s=>s.classList.remove('active'));
+      $('#'+id).classList.add('active');
+    });
+  });
+
+  // --- Animations ---
+  function confettiBurst(n=60){
+    const box = $('#confetti');
+    for(let i=0;i<n;i++){
+      const p = document.createElement('i');
+      p.style.left = Math.random()*100+'%';
+      p.style.background = Math.random()>0.5 ? 'linear-gradient(180deg, var(--brand), var(--brand-2))' : 'linear-gradient(180deg, #ffd86b, #ff6b81)';
+      p.style.transform = `rotate(${Math.random()*180}deg)`;
+      p.style.animationDelay = (Math.random()*0.3)+'s';
+      box.appendChild(p);
+      setTimeout(()=> p.remove(), 1500);
+    }
+  }
+
+  function flashSpark(){
+    const el = $('#spark');
+    el.innerHTML = '';
+    for(let i=0;i<40;i++){
+      const s = document.createElement('span');
+      s.style.position='absolute'; s.style.width='6px'; s.style.height='6px'; s.style.borderRadius='50%';
+      s.style.left = (Math.random()*100)+'%';
+      s.style.top = (10+Math.random()*60)+'%';
+      s.style.background = i%2? 'rgba(110,231,255,.5)':'rgba(124,254,173,.5)';
+      s.style.filter='blur(1px)';
+      s.style.transition='all .8s cubic-bezier(.17,.67,.3,1)';
+      el.appendChild(s);
+      requestAnimationFrame(()=>{
+        s.style.transform=`translateY(${(Math.random()*40)-20}px) scale(${1+Math.random()*1.5})`;
+        s.style.opacity='0';
+      });
+      setTimeout(()=>s.remove(),900);
+    }
+  }
+
+  // --- Helper ---
+  const yen = (n)=> '¥'+(Math.round(n)||0).toLocaleString('ja-JP');
+
+  // --- Loans helpers ---
+  const loanOutstanding = ()=> state.loans.reduce((a,b)=>a+b.remaining,0);
+
+  function accrueInterest(){
+    // Simple daily accrual; update remaining and lastAccrued
+    const today = new Date();
+    state.loans.forEach(L=>{
+      if(!L.apr || L.apr<=0) return;
+      const last = new Date(L.lastAccrued||L.date);
+      const days = Math.floor((today - last)/86400000);
+      if(days>0 && L.remaining>0){
+        const add = L.remaining * (L.apr/100) * (days/365);
+        L.remaining = Math.round(L.remaining + add);
+        L.lastAccrued = today.toISOString();
+        state.transactions.unshift({id:crypto.randomUUID(), type:'interest', amount:Math.round(add), description:'Interest accrued', category:'Loan', date:nowISO()});
+      }
+    });
+  }
+
+  function addLoan(amount, acct, desc, apr){
+    accrueInterest();
+    const loan={id:crypto.randomUUID(), amount, remaining:amount, date:nowISO(), desc:desc||'Loan', apr: apr||0, lastAccrued: nowISO()};
+    state.loans.push(loan); state.balances[acct]+=amount;
+    state.transactions.unshift({id:crypto.randomUUID(), type:'loan', amount, to:acct, description:loan.desc, category:'Loan', date:loan.date});
+    save(); render(); flashSpark(); notify(`Loan of ${yen(amount)} added to ${acct}${apr?` @ ${apr}% APR`:''}.`,'ok');
+  }
+
+  function repayLoan(amount){
+    accrueInterest();
+    let left=amount; let repaid=0; // repay FIFO
+    for(const L of state.loans){
+      if(L.remaining<=0) continue;
+      const use=Math.min(left, L.remaining); L.remaining-=use; left-=use; repaid+=use;
+      if(left<=0) break;
+    }
+    // remove fully paid loans
+    state.loans = state.loans.filter(L=> L.remaining>0);
+    if(repaid>0){
+      state.transactions.unshift({id:crypto.randomUUID(), type:'repay', amount:repaid, description:'Loan repayment', category:'Loan', date:nowISO()});
+      notify(`Repaid ${yen(repaid)} towards loans.`,'ok');
+    } else {
+      notify('No active loans to repay.','warn');
+    }
+    save();
+  }
+
+  // --- Money ops ---
+  function addTransaction(t){ state.transactions.unshift(t); save(); render(); }
+
+  async function addEarning(amount, acct, desc, cat){
+    amount = Math.floor(Math.max(0, amount));
+    if(!amount) return;
+    accrueInterest();
+    const debt = loanOutstanding();
+    let repay = 0;
+    if(debt>0){ repay = Math.min(Math.floor(amount/2), debt); }
+    const afterRepay = amount - repay;
+
+    // Savings confirmation (percentage of afterRepay)
+    const pct = state.savings.pct||0;
+    let toSave = 0;
+    if(pct>0){
+      toSave = Math.floor(afterRepay * (pct/100));
+      const ok = await confirmSavings(pct, toSave);
+      if(!ok) toSave = 0;
+    }
+
+    const keep = afterRepay - toSave;
+
+    if(repay>0){ repayLoan(repay); }
+    state.balances[acct]+=keep;
+    if(toSave>0){ state.balances.savings += toSave; state.transactions.unshift({id:crypto.randomUUID(), type:'save', amount:toSave, from:acct, to:'savings', description:'Savings split', category:'Savings', date:nowISO()}); }
+
+    addTransaction({id:crypto.randomUUID(), type:'earn', amount, to:acct, from:null, description:desc||'Earning', category:cat||'Chore', date:nowISO(), meta:{repay, saved:toSave}});
+    confettiBurst(); flashSpark();
+    notify(`Added earning ${yen(amount)} → ${acct}${toSave?`, saved ${yen(toSave)}`:''}${repay?`, repaid ${yen(repay)} to loans`:''}.`,'ok');
+  }
+
+  function addSpending(amount, acct, desc, cat){
+    amount = Math.floor(Math.max(0, amount));
+    if(!amount) return;
+    const avail = state.balances[acct];
+    if(amount>avail){
+      notify(`Not enough money in ${acct}. You have ${yen(avail)}.`, 'err');
+      return;
+    }
+    state.balances[acct]-=amount;
+    addTransaction({id:crypto.randomUUID(), type:'spend', amount, from:acct, to:null, description:desc||'Spending', category:cat||'Other', date:nowISO()});
+    notify(`Spent ${yen(amount)} from ${acct}.`,'ok');
+  }
+
+  function transfer(amount, from, to, desc){
+    if(from===to) return;
+    amount = Math.floor(Math.max(0, amount)); if(!amount) return;
+    const avail = state.balances[from];
+    if(amount>avail){ notify(`Not enough in ${from} to transfer ${yen(amount)} (have ${yen(avail)}).`,'err'); return; }
+    state.balances[from]-=amount; state.balances[to]+=amount;
+    addTransaction({id:crypto.randomUUID(), type:'transfer', amount, from, to, description:desc||'Transfer', category:'Transfer', date:nowISO()});
+    flashSpark(); notify(`Transferred ${yen(amount)}: ${from} → ${to}.`,'ok');
+  }
+
+  // --- Protected action flow ---
+  function promptPIN(reason){ return new Promise((resolve)=>{
+    $('#pinReason').textContent = reason||'Protected Action';
+    $('#pinInput').value='';
+    $('#pinModal').classList.add('show');
+    const ok=()=>{
+      const pin=$('#pinInput').value.trim();
+      if(pin.length!==4){ notify('Enter a 4-digit PIN','warn'); return; }
+      verifyPin(pin).then(pass=>{
+        if(!pass){ notify('Incorrect PIN','err'); return; }
+        $('#pinModal').classList.remove('show');
+        resolve(true);
+      });
+    }
+    $('#pinOk').onclick=ok;
+    $('#pinCancel').onclick=()=>{ $('#pinModal').classList.remove('show'); resolve(false); };
+    $('#pinInput').onkeydown=(e)=>{ if(e.key==='Enter') ok(); };
+    $('#pinInput').focus();
+  }); }
+
+  // Savings confirm modal
+  function confirmSavings(pct, yenAmt){ return new Promise((resolve)=>{
+    const box = $('#savingsConfirm');
+    $('#savingsConfirmText').textContent = `Apply ${pct}% of this earning to Savings (${yen(yenAmt)})?`;
+    box.classList.add('show');
+    $('#savingsApply').onclick=()=>{ box.classList.remove('show'); resolve(true); };
+    $('#savingsSkip').onclick =()=>{ box.classList.remove('show'); resolve(false); };
+  }); }
+
+  // --- Charts ---
+  function drawBalanceChart(ctx, items){
+    const w=ctx.canvas.width, h=ctx.canvas.height; ctx.clearRect(0,0,w,h);
+    const pad=24;
+    ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(pad,h-pad); ctx.lineTo(w-pad,h-pad); ctx.stroke();
+
+    if(items.length===0){ return; }
+    const xs = items.map((_,i)=> pad + (i*(w-2*pad))/Math.max(1,items.length-1));
+    const ysData = items.map(it=> it.total);
+    const minY = Math.min(...ysData, 0); const maxY = Math.max(...ysData, 100);
+    const y = (v)=> h-pad - ((v-minY)/(maxY-minY||1))*(h-2*pad);
+
+    if(minY<0){
+      const y0 = y(0);
+      ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.beginPath(); ctx.moveTo(pad,y0); ctx.lineTo(w-pad,y0); ctx.stroke();
+    }
+
+    for(let i=0;i<ysData.length-1;i++){
+      const v1=ysData[i], v2=ysData[i+1];
+      const x1=xs[i], x2=xs[i+1];
+      const yy1=y(v1), yy2=y(v2);
+      const neg = v1<0 || v2<0;
+      ctx.beginPath(); ctx.lineWidth=2; ctx.strokeStyle = neg? 'rgba(255,107,129,.95)':'rgba(124,254,173,.95)';
+      ctx.moveTo(x1,yy1); ctx.lineTo(x2,yy2); ctx.stroke();
+    }
+  }
+
+  function drawCategoryChart(ctx, buckets){
+    const w=ctx.canvas.width, h=ctx.canvas.height; ctx.clearRect(0,0,w,h);
+    const pad=24; const keys=Object.keys(buckets); if(keys.length===0) return;
+    const vals = keys.map(k=> buckets[k]);
+    const maxV = Math.max(...vals, 10);
+    const barW = (w-2*pad)/keys.length * .7;
+    keys.forEach((k,i)=>{
+      const x = pad + i*((w-2*pad)/keys.length) + ((w-2*pad)/keys.length - barW)/2;
+      const hVal = Math.round((vals[i]/maxV)*(h-2*pad));
+      const yv = h - pad - hVal;
+      ctx.fillStyle = i%2? 'rgba(110,231,255,.9)':'rgba(124,254,173,.9)';
+      ctx.fillRect(x,yv,barW,hVal);
+      ctx.fillStyle = 'rgba(255,255,255,.8)';
+      ctx.font='12px system-ui'; ctx.textAlign='center';
+      ctx.fillText(k, x+barW/2, h-8);
+    });
+  }
+
+  function computeSeries(range){
+    const items = []; let total=0; const buckets={}; let repayTotal=0; let interestTotal=0;
+    const tx = state.transactions.filter(t=> inRange(t.date, range));
+    const chron = tx.slice().sort((a,b)=> new Date(a.date)-new Date(b.date));
+    chron.forEach(t=>{
+      if(t.type==='earn'){ total+= (t.amount - (t.meta?.repay||0) - (t.meta?.saved||0)); repayTotal += (t.meta?.repay||0); }
+      if(t.type==='save'){ /* neutral to total; handled above via saved */ }
+      if(t.type==='spend'){ total-=t.amount; }
+      if(t.type==='transfer'){ /* net zero */ }
+      if(t.type==='loan'){ total+=t.amount; }
+      if(t.type==='repay'){ /* repayment not part of inflow */ }
+      if(t.type==='interest'){ interestTotal += t.amount; }
+      items.push({d: new Date(t.date), total});
+      if(t.type==='spend'){
+        const key=t.category||'Other'; buckets[key]=(buckets[key]||0)+t.amount;
+      }
+    });
+    return {items, buckets, repayTotal, interestTotal};
+  }
+
+  function inRange(dISO, range){
+    if(!range) return true;
+    const d = new Date(dISO).setHours(0,0,0,0);
+    const a = range.from? new Date(range.from).setHours(0,0,0,0): null;
+    const b = range.to? new Date(range.to).setHours(0,0,0,0): null;
+    if(a && d<a) return false; if(b && d>b) return false; return true;
+  }
+
+  function thisMonthRange(){
+    const d=new Date();
+    const from = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10);
+    const to = new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().slice(0,10);
+    return {from, to};
+  }
+
+  // --- Rendering ---
+  function renderBalances(){
+    $('#physicalBalance').textContent = yen(state.balances.physical);
+    $('#digitalBalance').textContent = yen(state.balances.digital);
+    $('#savingsBalance').textContent = yen(state.balances.savings);
+    const total = state.balances.physical + state.balances.digital + state.balances.savings;
+    $('#totalBalance').textContent = yen(total);
+    const debt = loanOutstanding();
+    $('#loanOutstanding').textContent = yen(debt);
+    const net = total - debt;
+    $('#netWorth').textContent = yen(net);
+    $('#netWorthPill').style.background = net<0 ? 'rgba(255,107,129,.12)' : 'rgba(124,254,173,.12)';
+    $('#netWorthPill').style.borderColor = net<0 ? 'rgba(255,107,129,.4)' : 'rgba(124,254,173,.4)';
+  }
+
+  function renderOverview(range){
+    const r = range || thisMonthRange();
+    $('#periodLabel').textContent = r.from && r.to ? `${r.from} → ${r.to}` : 'This Month';
+    const tx = state.transactions.filter(t=> inRange(t.date, r));
+    const earned = tx.filter(t=>t.type==='earn').reduce((a,b)=>a+b.amount,0);
+    const spent = tx.filter(t=>t.type==='spend').reduce((a,b)=>a+b.amount,0);
+    const xfer = tx.filter(t=>t.type==='transfer').reduce((a,b)=>a+b.amount,0);
+    const repay = tx.filter(t=>t.type==='earn').reduce((a,b)=>a+(b.meta?.repay||0),0) + tx.filter(t=>t.type==='repay').reduce((a,b)=>a+b.amount,0);
+    const interest = tx.filter(t=>t.type==='interest').reduce((a,b)=>a+b.amount,0);
+    $('#earnedPeriod').textContent = yen(earned);
+    $('#spentPeriod').textContent = yen(spent);
+    $('#xferPeriod').textContent = yen(xfer);
+    $('#repayPeriod').textContent = yen(repay);
+    $('#interestPeriod').textContent = yen(interest);
+    const tm = thisMonthRange();
+    const spentThisM = state.transactions.filter(t=> t.type==='spend' && inRange(t.date, tm)).reduce((a,b)=>a+b.amount,0);
+    $('#spentThisMonth').textContent = `Spent this month: ${yen(spentThisM)}`;
+    $('#savingsStatus').textContent = state.savings.pct>0? `On • ${state.savings.pct}%` : 'Off';
+  }
+
+  function renderLogs(){
+    const list = $('#logList'); list.innerHTML='';
+    const tx = state.transactions.slice(0,80);
+    if(tx.length===0){ list.innerHTML = '<div class="muted">No activity yet. Add an entry!</div>'; return; }
+    tx.forEach(t=>{
+      const el = document.createElement('div'); el.className='log';
+      const side = document.createElement('div');
+      const when = new Date(t.date).toLocaleString();
+      const title = t.type==='loan'? 'Loan +'+yen(t.amount): t.type==='repay'? 'Repayment -'+yen(t.amount): t.type==='interest'? 'Interest +'+yen(t.amount): (t.description||t.type);
+      side.innerHTML = `<div><b>${title}</b></div><div class="muted" style="font-size:12px">${when} • ${t.category||''}</div>`;
+      const amt = document.createElement('div');
+      let badge='';
+      if(t.type==='earn'){
+        const repay = t.meta?.repay||0; const saved=t.meta?.saved||0;
+        badge = `<span class="pill" style="border-color:rgba(124,254,173,.4); background:rgba(124,254,173,.12)">+ ${t.to}</span>` + (repay? ` <span class="pill" style="border-color:rgba(255,107,129,.4); background:rgba(255,107,129,.12)">repay ${yen(repay)}</span>`:'') + (saved? ` <span class="pill" style="border-color:rgba(110,231,255,.4); background:rgba(110,231,255,.12)">saved ${yen(saved)}</span>`:'');
+      }
+      if(t.type==='save') badge = `<span class="pill" style="border-color:rgba(110,231,255,.4); background:rgba(110,231,255,.12)">${t.from} → ${t.to}</span>`;
+      if(t.type==='spend') badge = `<span class="pill" style="border-color:rgba(255,255,255,.2); background:rgba(255,255,255,.06)">- ${t.from}</span>`;
+      if(t.type==='transfer') badge = `<span class="pill" style="border-color:rgba(110,231,255,.4); background:rgba(110,231,255,.12)">${t.from} → ${t.to}</span>`;
+      if(t.type==='loan') badge = `<span class="pill" style="border-color:rgba(110,231,255,.4); background:rgba(110,231,255,.12)">Loan → ${t.to}</span>`;
+      if(t.type==='repay') badge = `<span class="pill" style="border-color:rgba(255,107,129,.4); background:rgba(255,107,129,.12)">Loan repayment</span>`;
+      if(t.type==='interest') badge = `<span class="pill" style="border-color:rgba(255,255,255,.3); background:rgba(255,255,255,.08)">Interest added</span>`;
+      amt.innerHTML = `<div style="text-align:right"><div style="font-weight:800">${(t.type==='spend'||t.type==='repay')?'-':'+'}${yen(t.amount)}</div><div class="muted" style="font-size:12px">${badge}</div></div>`;
+      el.appendChild(side); el.appendChild(amt); list.appendChild(el);
+    });
+  }
+
+  function renderLoans(){
+    $('#loanLimits').textContent = `Max loans: ${state.limits.maxLoans} • Max per loan: ${yen(state.limits.maxPerLoan)}`;
+    const list = $('#loanList'); list.innerHTML='';
+    if(state.loans.length===0){ list.innerHTML='<div class="muted">No active loans.</div>'; return; }
+    state.loans.forEach(L=>{
+      const el=document.createElement('div'); el.className='log';
+      el.innerHTML = `<div><b>${L.desc||'Loan'}</b><div class="muted" style="font-size:12px">${new Date(L.date).toLocaleString()} ${L.apr?`• ${L.apr}% APR`:''}</div></div><div>Remaining: <b>${yen(L.remaining)}</b> / ${yen(L.amount)}</div>`;
+      list.appendChild(el);
+    });
+  }
+
+  function renderPresets(){
+    const row = $('#presetRow'); if(row){ row.innerHTML='';
+      state.presets.forEach((p)=>{
+        const b = document.createElement('button');
+        b.className='button secondary'; b.style.width='auto';
+        b.textContent = `${p.label} (${yen(p.amount)})`;
+        b.addEventListener('click', ()=>{
+          $('#entryType').value = p.type;
+          $('#entryAccount').value = p.acct;
+          $('#entryAmount').value = p.amount;
+          $('#entryDesc').value = p.label;
+          $('#entryCategory').value = p.type==='earn' ? 'Chore':'Other';
+          notify(`Preset loaded: ${p.label}`,'ok');
+        });
+        row.appendChild(b);
+      });
+    }
+
+    const list = $('#presetList'); if(list){ list.innerHTML='';
+      state.presets.forEach((p,i)=>{
+        const item = document.createElement('div'); item.className='log';
+        item.innerHTML = `<div><b>${p.label}</b><div class="muted" style="font-size:12px">${p.type} • ${p.acct}</div></div><div>${yen(p.amount)}</div>`;
+        const del = document.createElement('button'); del.className='button secondary'; del.style.width='auto'; del.textContent='Delete';
+        del.onclick = ()=>{ state.presets.splice(i,1); save(); renderPresets(); notify('Preset deleted','warn'); };
+        item.appendChild(del);
+        list.appendChild(item);
+        });
+      }
+      const c = $('#presetCount'); if(c) c.textContent = state.presets.length;
+    }
+
+    function renderCharts(range){
+      const {items, buckets} = computeSeries(range);
+      const c1 = $('#chartBalance').getContext('2d');
+      const c2 = $('#chartCategory').getContext('2d');
+      drawBalanceChart(c1, items);
+      drawCategoryChart(c2, buckets);
+    }
+
+    function render(range){
+      renderBalances();
+      renderOverview(range);
+      renderLogs();
+      renderPresets();
+      renderLoans();
+      renderCharts(range);
+    }
+
+    // --- Handlers ---
+    $('#saveEntry').addEventListener('click', async ()=>{
+      const type = $('#entryType').value;
+      const acct = $('#entryAccount').value;
+      const amt = parseInt($('#entryAmount').value||'0',10);
+      const cat = $('#entryCategory').value;
+      const desc= $('#entryDesc').value.trim() || (type==='earn'?'Earning':'Spending');
+      if(!amt || amt<=0) return notify('Enter an amount','warn');
+      if(type==='earn'){
+        const ok = await promptPIN('Add Earning'); if(!ok) return;
+        addEarning(amt, acct, desc, cat);
+      } else {
+        addSpending(amt, acct, desc, cat);
+      }
+    });
+
+    $('#doTransfer').addEventListener('click', async ()=>{
+      const from=$('#xferFrom').value, to=$('#xferTo').value;
+      const amt=parseInt($('#xferAmount').value||'0',10);
+      const desc=$('#xferDesc').value.trim()||'Transfer';
+      if(!amt || amt<=0) return notify('Enter an amount','warn');
+      const ok = await promptPIN('Transfer Funds'); if(!ok) return;
+      transfer(amt, from, to, desc);
+    });
+
+    $('#addPreset').addEventListener('click', ()=>{
+      const label=$('#pLabel').value.trim();
+      const amount=parseInt($('#pAmount').value||'0',10);
+      const type=$('#pType').value; const acct=$('#pAcct').value;
+      if(!label || !amount) return notify('Fill label and amount','warn');
+      state.presets.push({label, amount, type, acct}); save(); renderPresets();
+      $('#pLabel').value=''; $('#pAmount').value='';
+      notify('Preset added','ok');
+    });
+
+    $('#savePin').addEventListener('click', async ()=>{
+      const oldP=$('#setPinOld').value.trim();
+      const a=$('#setPin1').value.trim(), b=$('#setPin2').value.trim();
+      if(a.length!==4 || b.length!==4) return notify('New PIN must be 4 digits','warn');
+      if(a!==b) return notify('PINs do not match','err');
+      if(oldP.length!==4) return notify('Enter your current PIN','warn');
+      const okOld = await verifyPin(oldP);
+      if(!okOld) return notify('Current PIN is incorrect. PIN not changed.','err');
+      await setPin(a);
+      $('#setPinOld').value=''; $('#setPin1').value=''; $('#setPin2').value='';
+      confettiBurst(40); notify('PIN changed successfully ✅','ok');
+    });
+
+    // Loans
+    $('#takeLoan').addEventListener('click', async ()=>{
+      const amt=parseInt($('#loanAmount').value||'0',10);
+      const acct=$('#loanAcct').value;
+      const desc=$('#loanDesc').value.trim()||'Loan';
+      const apr=parseFloat($('#loanAPR').value||'0');
+      if(!amt || amt<=0) return notify('Enter loan amount','warn');
+      if(state.loans.length >= state.limits.maxLoans) return notify('You already have the maximum number of active loans.','err');
+      if(amt > state.limits.maxPerLoan) return notify('Loan amount exceeds the limit per loan.','err');
+      const ok = await promptPIN('Take Loan'); if(!ok) return;
+      addLoan(amt, acct, desc, isNaN(apr)?0:apr);
+    });
+
+    $('#repayBtn').addEventListener('click', ()=>{
+      const amt = parseInt($('#repayAmt').value||'0',10);
+      const from = $('#repayFrom').value;
+      if(!amt || amt<=0) return notify('Enter a repayment amount','warn');
+      const avail = state.balances[from];
+      if(amt>avail) return notify(`Not enough in ${from}. You have ${yen(avail)}.`,'err');
+      state.balances[from]-=amt; repayLoan(amt); save(); render();
+    });
+
+    // Settings: loan limits (optional; saved if numbers entered)
+    $('#limitMaxLoans').addEventListener('change', ()=>{
+      const v=parseInt($('#limitMaxLoans').value||'',10); if(!isNaN(v)) { state.limits.maxLoans=Math.max(0,v); save(); renderLoans(); notify('Max loans updated','ok'); }
+    });
+    $('#limitMaxAmt').addEventListener('change', ()=>{
+      const v=parseInt($('#limitMaxAmt').value||'',10); if(!isNaN(v)) { state.limits.maxPerLoan=Math.max(0,v); save(); renderLoans(); notify('Max per loan updated','ok'); }
+    });
+
+    // Savings settings
+    $('#saveSavings').addEventListener('click', async ()=>{
+      const pct = Math.max(0, Math.min(100, parseInt($('#savingsPct').value||'0',10)));
+      const ok = await promptPIN('Change Savings Settings'); if(!ok) return;
+      state.savings.pct = pct; save(); renderOverview(); notify(`Savings set to ${pct}%`,'ok');
+    });
+
+    // Dashboard range & reset
+    function applyRange(){
+      const r = { from: $('#fromDate').value||null, to: $('#toDate').value||null };
+      render(r);
+    }
+    $('#applyRange').addEventListener('click', applyRange);
+
+    $('#clearAll').addEventListener('click', async ()=>{
+      const ok = await promptPIN('Reset app (keep PIN)'); if(!ok) return;
+      const keepPin = state.pinHash;
+      const keepFirstRun = false;
+      const keepLimits = state.limits;
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        balances:{physical:0, digital:0, savings:0},
+        transactions:[],
+        presets: defaultPresets,
+        pinHash: keepPin,
+        firstRun: keepFirstRun,
+        loans: [],
+        limits: keepLimits,
+        savings: { pct: state.savings.pct||0 },
+        createdAt: nowISO()
+      }));
+      Object.assign(state, load());
+      notify('Reset complete. PIN kept.','ok');
+      render();
+    });
+
+    // First run PIN setup
+    function showFirstRun(){ $('#firstRun').classList.add('show'); }
+    function hideFirstRun(){ $('#firstRun').classList.remove('show'); }
+    $('#frSave').addEventListener('click', async ()=>{
+      const a=$('#frPin1').value.trim(), b=$('#frPin2').value.trim();
+      if(a.length!==4 || b.length!==4) return notify('PIN must be 4 digits','warn');
+      if(a!==b) return notify('PINs do not match','err');
+      await setPin(a); hideFirstRun(); confettiBurst(100); notify('PIN saved','ok');
+    });
+
+    // Kickoff
+    render();
+    if(state.firstRun || !state.pinHash){ showFirstRun(); }
+    // Prefill settings
+    $('#limitMaxLoans').value = state.limits.maxLoans;
+    $('#limitMaxAmt').value = state.limits.maxPerLoan;
+    $('#savingsPct').value = state.savings.pct||0;
+
+    // Resize canvas to actual CSS size for crisp drawing
+    function fitCanvas(c){ const rect=c.getBoundingClientRect(); c.width=Math.max(320, Math.floor(rect.width*2)); c.height=Math.floor(rect.height*2); }
+    const canvases = ['#chartBalance','#chartCategory'].map(s=>$(s));
+    function redraw(){ canvases.forEach(c=>{ fitCanvas(c); }); renderCharts({from:$('#fromDate').value||null, to:$('#toDate').value||null}); }
+    window.addEventListener('resize', redraw);
+    setTimeout(redraw, 0);
+
+    // --- Simple runtime tests (console) ---
+    function runTests(){
+      const tests = [];
+      const ok = (name, cond)=> tests.push({name, pass: !!cond});
+      try { ok('renderPresets exists', typeof renderPresets === 'function'); } catch(e){ ok('renderPresets exists', false); }
+      // Test: overspend is blocked (simulate spend > balance)
+      const prevNotify = notify; let msg='';
+      window.notify=(m)=>{msg=m};
+      const snapBal = JSON.parse(JSON.stringify(state.balances));
+      state.balances.physical = 0;
+      addSpending(10,'physical','test','Other');
+      ok('overspend blocked message shown', typeof msg==='string' && msg.toLowerCase().includes('not enough'));
+      state.balances = snapBal; save();
+      window.notify = prevNotify;
+      console.log('%cKids Bank – Tests', 'color:#7cfead');
+      tests.forEach(t=> console.log((t.pass?'✅':'❌'), t.name));
+    }
+    setTimeout(runTests, 300);
+
+  })();
+</script>
+</body>
+</html>
