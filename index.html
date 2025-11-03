@@ -96,7 +96,7 @@
       <div class="logo">¥</div>
       <div>
         <h1>Kids Bank</h1>
-        <div class="muted">Track chores, earnings, spending — physical, digital & savings</div>
+        <div class="muted">Track chores, earnings, spending — physical, digital & savings (with Savings PIN)</div>
       </div>
     </div>
   </div>
@@ -208,7 +208,7 @@
         <div id="presetRow" class="row" style="flex-wrap:wrap; gap:8px"></div>
       </div>
       <button class="button" id="saveEntry">Save Entry</button>
-      <div class="hint">Earnings and transfers are protected by your dad's 4-digit PIN. Savings can split earnings after confirmation.</div>
+      <div class="hint">Earnings and most transfers are protected by your parent’s 4‑digit PIN. Savings transfers use your own Savings PIN. Savings can split earnings after confirmation.</div>
     </div>
   </div>
 
@@ -240,7 +240,7 @@
         </div>
         <div>
           <label class="muted">Reason</label>
-          <input id="xferDesc" class="input" placeholder="e.g., Move cash to Dad's card"/>
+          <input id="xferDesc" class="input" placeholder="e.g., Move cash to parent's card"/>
         </div>
       </div>
       <button class="button" id="doTransfer">Transfer</button>
@@ -362,7 +362,7 @@
         </div>
       </div>
       <button class="button" id="savePin">Change PIN</button>
-      <div class="hint">PIN protects adding money, transfers, taking loans, and changing savings settings. Only Dad should know it.</div>
+      <div class="hint">Parent PIN protects adding money, transfers (except Savings), taking loans, and changing savings settings. Only your paren</div>
     </div>
   </div>
 
@@ -851,189 +851,201 @@
         const item = document.createElement('div'); item.className='log';
         item.innerHTML = `<div><b>${p.label}</b><div class="muted" style="font-size:12px">${p.type} • ${p.acct}</div></div><div>${yen(p.amount)}</div>`;
         const del = document.createElement('button'); del.className='button secondary'; del.style.width='auto'; del.textContent='Delete';
-        del.onclick = ()=>{ state.presets.splice(i,1); save(); renderPresets(); notify('Preset deleted','warn'); };
+        del.onclick = ()=>{ state.presets.splice(i,1); save(); renderPresets(); notify('Preset removed','ok'); };
         item.appendChild(del);
         list.appendChild(item);
-        });
-      }
+      });
       const c = $('#presetCount'); if(c) c.textContent = state.presets.length;
     }
+  }
 
-    function renderCharts(range){
-      const {items, buckets} = computeSeries(range);
-      const c1 = $('#chartBalance').getContext('2d');
-      const c2 = $('#chartCategory').getContext('2d');
-      drawBalanceChart(c1, items);
-      drawCategoryChart(c2, buckets);
+  function renderCharts(range){
+    const {items, buckets} = computeSeries(range||thisMonthRange());
+    const c1 = $('#chartBalance').getContext('2d');
+    const c2 = $('#chartCategory').getContext('2d');
+    // fit canvas to CSS size (crisp)
+    function fitCanvas(c){ const r=c.getBoundingClientRect(); c.width=Math.max(320, Math.floor(r.width*2)); c.height=Math.floor(200*2); }
+    fitCanvas($('#chartBalance')); fitCanvas($('#chartCategory'));
+    drawBalanceChart(c1, items);
+    drawCategoryChart(c2, buckets);
+  }
+
+  function render(range){
+    renderBalances();
+    renderOverview(range);
+    renderLogs();
+    renderPresets();
+    renderLoans();
+    renderCharts(range);
+  }
+
+  // === Handlers ===
+  $('#saveEntry').addEventListener('click', async ()=>{
+    const type = $('#entryType').value;
+    const acct = $('#entryAccount').value;
+    const amt = parseInt($('#entryAmount').value||'0',10);
+    const cat = $('#entryCategory').value;
+    const desc= $('#entryDesc').value.trim() || (type==='earn'?'Earning':'Spending');
+    if(!amt || amt<=0) return notify('Enter an amount','warn');
+    if(type==='earn'){
+      const ok = await promptPIN('parent','Add Earning'); if(!ok) return;
+      addEarning(amt, acct, desc, cat);
+    } else {
+      addSpending(amt, acct, desc, cat);
     }
+  });
 
-    function render(range){
-      renderBalances();
-      renderOverview(range);
-      renderLogs();
-      renderPresets();
-      renderLoans();
-      renderCharts(range);
+  $('#doTransfer').addEventListener('click', async ()=>{
+    const from=$('#xferFrom').value, to=$('#xferTo').value;
+    const amt=parseInt($('#xferAmount').value||'0',10);
+    const desc=$('#xferDesc').value.trim()||'Transfer';
+    if(!amt || amt<=0) return notify('Enter an amount','warn');
+    if(from==='savings' && to==='physical') return notify('Savings can only be converted to Digital (not Physical).','err');
+    let ok=false;
+    if(from==='savings' || to==='savings'){
+      if(!state.savingsPinHash) return notify('Set a Savings PIN in Settings first.','warn');
+      ok = await promptPIN('savings','Savings Transfer');
+    } else {
+      ok = await promptPIN('parent','Transfer Funds');
     }
+    if(!ok) return;
+    transfer(amt, from, to, desc);
+  });
 
-    // --- Handlers ---
-    $('#saveEntry').addEventListener('click', async ()=>{
-      const type = $('#entryType').value;
-      const acct = $('#entryAccount').value;
-      const amt = parseInt($('#entryAmount').value||'0',10);
-      const cat = $('#entryCategory').value;
-      const desc= $('#entryDesc').value.trim() || (type==='earn'?'Earning':'Spending');
-      if(!amt || amt<=0) return notify('Enter an amount','warn');
-      if(type==='earn'){
-        const ok = await promptPIN('Add Earning'); if(!ok) return;
-        addEarning(amt, acct, desc, cat);
-      } else {
-        addSpending(amt, acct, desc, cat);
-      }
-    });
+  $('#addPreset').addEventListener('click', ()=>{
+    const label=$('#pLabel').value.trim();
+    const amount=parseInt($('#pAmount').value||'0',10);
+    const type=$('#pType').value; const acct=$('#pAcct').value;
+    if(!label || !amount) return notify('Fill label and amount','warn');
+    state.presets.push({label, amount, type, acct}); save(); renderPresets();
+    $('#pLabel').value=''; $('#pAmount').value='';
+    notify('Preset added','ok');
+  });
 
-    $('#doTransfer').addEventListener('click', async ()=>{
-      const from=$('#xferFrom').value, to=$('#xferTo').value;
-      const amt=parseInt($('#xferAmount').value||'0',10);
-      const desc=$('#xferDesc').value.trim()||'Transfer';
-      if(!amt || amt<=0) return notify('Enter an amount','warn');
-      const ok = await promptPIN('Transfer Funds'); if(!ok) return;
-      transfer(amt, from, to, desc);
-    });
+  $('#savePin').addEventListener('click', async ()=>{
+    const oldP=$('#setPinOld').value.trim();
+    const a=$('#setPin1').value.trim(), b=$('#setPin2').value.trim();
+    if(a.length!==4 || b.length!==4) return notify('New PIN must be 4 digits','warn');
+    if(a!==b) return notify('PINs do not match','err');
+    if(oldP.length!==4) return notify('Enter your current PIN','warn');
+    const okOld = await verifyPin(oldP);
+    if(!okOld) return notify('Current PIN is incorrect. PIN not changed.','err');
+    await setPin(a);
+    $('#setPinOld').value=''; $('#setPin1').value=''; $('#setPin2').value='';
+    confettiBurst(40); notify('Parent PIN changed successfully ✅','ok');
+  });
 
-    $('#addPreset').addEventListener('click', ()=>{
-      const label=$('#pLabel').value.trim();
-      const amount=parseInt($('#pAmount').value||'0',10);
-      const type=$('#pType').value; const acct=$('#pAcct').value;
-      if(!label || !amount) return notify('Fill label and amount','warn');
-      state.presets.push({label, amount, type, acct}); save(); renderPresets();
-      $('#pLabel').value=''; $('#pAmount').value='';
-      notify('Preset added','ok');
-    });
+  // Savings settings
+  $('#saveSavings').addEventListener('click', async ()=>{
+    const pct = Math.max(0, Math.min(100, parseInt($('#savingsPct').value||'0',10)));
+    const ok = await promptPIN('parent','Change Savings Settings'); if(!ok) return;
+    state.savings.pct = pct; save(); renderOverview(); notify(`Savings set to ${pct}%`,'ok');
+  });
 
-    $('#savePin').addEventListener('click', async ()=>{
-      const oldP=$('#setPinOld').value.trim();
-      const a=$('#setPin1').value.trim(), b=$('#setPin2').value.trim();
-      if(a.length!==4 || b.length!==4) return notify('New PIN must be 4 digits','warn');
-      if(a!==b) return notify('PINs do not match','err');
-      if(oldP.length!==4) return notify('Enter your current PIN','warn');
-      const okOld = await verifyPin(oldP);
-      if(!okOld) return notify('Current PIN is incorrect. PIN not changed.','err');
-      await setPin(a);
-      $('#setPinOld').value=''; $('#setPin1').value=''; $('#setPin2').value='';
-      confettiBurst(40); notify('PIN changed successfully ✅','ok');
-    });
+  // Loans
+  $('#takeLoan').addEventListener('click', async ()=>{
+    const amt=parseInt($('#loanAmount').value||'0',10);
+    const acct=$('#loanAcct').value;
+    const desc=$('#loanDesc').value.trim()||'Loan';
+    const apr=parseFloat($('#loanAPR').value||'0');
+    if(!amt || amt<=0) return notify('Enter loan amount','warn');
+    if(state.loans.length >= state.limits.maxLoans) return notify('You already have the maximum number of active loans.','err');
+    if(amt > state.limits.maxPerLoan) return notify('Loan amount exceeds the limit per loan.','err');
+    const ok = await promptPIN('parent','Take Loan'); if(!ok) return;
+    addLoan(amt, acct, desc, isNaN(apr)?0:apr);
+  });
 
-    // Loans
-    $('#takeLoan').addEventListener('click', async ()=>{
-      const amt=parseInt($('#loanAmount').value||'0',10);
-      const acct=$('#loanAcct').value;
-      const desc=$('#loanDesc').value.trim()||'Loan';
-      const apr=parseFloat($('#loanAPR').value||'0');
-      if(!amt || amt<=0) return notify('Enter loan amount','warn');
-      if(state.loans.length >= state.limits.maxLoans) return notify('You already have the maximum number of active loans.','err');
-      if(amt > state.limits.maxPerLoan) return notify('Loan amount exceeds the limit per loan.','err');
-      const ok = await promptPIN('Take Loan'); if(!ok) return;
-      addLoan(amt, acct, desc, isNaN(apr)?0:apr);
-    });
+  $('#repayBtn').addEventListener('click', ()=>{
+    const amt = parseInt($('#repayAmt').value||'0',10);
+    const from = $('#repayFrom').value;
+    if(!amt || amt<=0) return notify('Enter a repayment amount','warn');
+    const avail = state.balances[from];
+    if(amt>avail) return notify(`Not enough in ${from}. You have ${yen(avail)}.`,'err');
+    state.balances[from]-=amt; repayLoan(amt); save(); render();
+  });
 
-    $('#repayBtn').addEventListener('click', ()=>{
-      const amt = parseInt($('#repayAmt').value||'0',10);
-      const from = $('#repayFrom').value;
-      if(!amt || amt<=0) return notify('Enter a repayment amount','warn');
-      const avail = state.balances[from];
-      if(amt>avail) return notify(`Not enough in ${from}. You have ${yen(avail)}.`,'err');
-      state.balances[from]-=amt; repayLoan(amt); save(); render();
-    });
+  // Limits inputs
+  $('#limitMaxLoans').addEventListener('change', ()=>{
+    const v=parseInt($('#limitMaxLoans').value||'',10); if(!isNaN(v)) { state.limits.maxLoans=Math.max(0,v); save(); renderLoans(); notify('Max loans updated','ok'); }
+  });
+  $('#limitMaxAmt').addEventListener('change', ()=>{
+    const v=parseInt($('#limitMaxAmt').value||'',10); if(!isNaN(v)) { state.limits.maxPerLoan=Math.max(0,v); save(); renderLoans(); notify('Max per loan updated','ok'); }
+  });
 
-    // Settings: loan limits (optional; saved if numbers entered)
-    $('#limitMaxLoans').addEventListener('change', ()=>{
-      const v=parseInt($('#limitMaxLoans').value||'',10); if(!isNaN(v)) { state.limits.maxLoans=Math.max(0,v); save(); renderLoans(); notify('Max loans updated','ok'); }
-    });
-    $('#limitMaxAmt').addEventListener('change', ()=>{
-      const v=parseInt($('#limitMaxAmt').value||'',10); if(!isNaN(v)) { state.limits.maxPerLoan=Math.max(0,v); save(); renderLoans(); notify('Max per loan updated','ok'); }
-    });
+  // Date range
+  function applyRange(){
+    const r = { from: $('#fromDate').value||null, to: $('#toDate').value||null };
+    render(r);
+  }
+  $('#applyRange').addEventListener('click', applyRange);
 
-    // Savings settings
-    $('#saveSavings').addEventListener('click', async ()=>{
-      const pct = Math.max(0, Math.min(100, parseInt($('#savingsPct').value||'0',10)));
-      const ok = await promptPIN('Change Savings Settings'); if(!ok) return;
-      state.savings.pct = pct; save(); renderOverview(); notify(`Savings set to ${pct}%`,'ok');
-    });
+  // --- Dual PIN support (Savings PIN) ---
+  async function setSavingsPin(pin){ state.savingsPinHash = await hasher('sav:'+pin); save(); }
+  async function verifySavingsPin(pin){ if(!state.savingsPinHash) return false; const h = await hasher('sav:'+pin); return h === state.savingsPinHash; }
 
-    // Dashboard range & reset
-    function applyRange(){
-      const r = { from: $('#fromDate').value||null, to: $('#toDate').value||null };
-      render(r);
+  function promptPIN(mode='parent', reason){ return new Promise((resolve)=>{
+    $('#pinReason').textContent = reason|| (mode==='savings'?'Savings Action':'Protected Action');
+    $('#pinInput').value='';
+    $('#pinModal').classList.add('show');
+    const ok=()=>{
+      const pin=$('#pinInput').value.trim();
+      if(pin.length!==4){ notify('Enter a 4-digit PIN','warn'); return; }
+      const verify = mode==='savings' ? verifySavingsPin : verifyPin;
+      verify(pin).then(pass=>{
+        if(!pass){ notify('Incorrect PIN','err'); return; }
+        $('#pinModal').classList.remove('show');
+        resolve(true);
+      });
     }
-    $('#applyRange').addEventListener('click', applyRange);
+    $('#pinOk').onclick=ok;
+    $('#pinCancel').onclick=()=>{ $('#pinModal').classList.remove('show'); resolve(false); };
+    $('#pinInput').onkeydown=(e)=>{ if(e.key==='Enter') ok(); };
+    $('#pinInput').focus();
+  }); }
 
-    $('#clearAll').addEventListener('click', async ()=>{
-      const ok = await promptPIN('Reset app (keep PIN)'); if(!ok) return;
-      const keepPin = state.pinHash;
-      const keepFirstRun = false;
-      const keepLimits = state.limits;
-      localStorage.setItem(STORE_KEY, JSON.stringify({
-        balances:{physical:0, digital:0, savings:0},
-        transactions:[],
-        presets: defaultPresets,
-        pinHash: keepPin,
-        firstRun: keepFirstRun,
-        loans: [],
-        limits: keepLimits,
-        savings: { pct: state.savings.pct||0 },
-        createdAt: nowISO()
-      }));
-      Object.assign(state, load());
-      notify('Reset complete. PIN kept.','ok');
-      render();
-    });
+  // Minimal Savings PIN setter (short UI via prompts)
+  function quickSetSavingsPin(){
+    const old = state.savingsPinHash ? prompt('Enter current Savings PIN (4 digits)') : '';
+    if(state.savingsPinHash){ if(!old || old.length!==4) { notify('Savings PIN not changed','warn'); return; } }
+    const a = prompt('Enter new Savings PIN (4 digits)'); if(!a || a.length!==4){ notify('Savings PIN must be 4 digits','err'); return; }
+    const b = prompt('Confirm new Savings PIN'); if(a!==b){ notify('Savings PINs do not match','err'); return; }
+    if(state.savingsPinHash){ verifySavingsPin(old).then(ok=>{ if(!ok) return notify('Current Savings PIN incorrect','err'); setSavingsPin(a).then(()=> notify('Savings PIN changed ✅','ok')); }); }
+    else { setSavingsPin(a).then(()=> notify('Savings PIN set ✅','ok')); }
+  }
 
-    // First run PIN setup
-    function showFirstRun(){ $('#firstRun').classList.add('show'); }
-    function hideFirstRun(){ $('#firstRun').classList.remove('show'); }
-    $('#frSave').addEventListener('click', async ()=>{
-      const a=$('#frPin1').value.trim(), b=$('#frPin2').value.trim();
-      if(a.length!==4 || b.length!==4) return notify('PIN must be 4 digits','warn');
-      if(a!==b) return notify('PINs do not match','err');
-      await setPin(a); hideFirstRun(); confettiBurst(100); notify('PIN saved','ok');
-    });
-
-    // Kickoff
-    render();
-    if(state.firstRun || !state.pinHash){ showFirstRun(); }
-    // Prefill settings
-    $('#limitMaxLoans').value = state.limits.maxLoans;
-    $('#limitMaxAmt').value = state.limits.maxPerLoan;
-    $('#savingsPct').value = state.savings.pct||0;
-
-    // Resize canvas to actual CSS size for crisp drawing
-    function fitCanvas(c){ const rect=c.getBoundingClientRect(); c.width=Math.max(320, Math.floor(rect.width*2)); c.height=Math.floor(rect.height*2); }
-    const canvases = ['#chartBalance','#chartCategory'].map(s=>$(s));
-    function redraw(){ canvases.forEach(c=>{ fitCanvas(c); }); renderCharts({from:$('#fromDate').value||null, to:$('#toDate').value||null}); }
-    window.addEventListener('resize', redraw);
-    setTimeout(redraw, 0);
-
-    // --- Simple runtime tests (console) ---
-    function runTests(){
-      const tests = [];
-      const ok = (name, cond)=> tests.push({name, pass: !!cond});
-      try { ok('renderPresets exists', typeof renderPresets === 'function'); } catch(e){ ok('renderPresets exists', false); }
-      // Test: overspend is blocked (simulate spend > balance)
-      const prevNotify = notify; let msg='';
-      window.notify=(m)=>{msg=m};
-      const snapBal = JSON.parse(JSON.stringify(state.balances));
-      state.balances.physical = 0;
-      addSpending(10,'physical','test','Other');
-      ok('overspend blocked message shown', typeof msg==='string' && msg.toLowerCase().includes('not enough'));
-      state.balances = snapBal; save();
-      window.notify = prevNotify;
-      console.log('%cKids Bank – Tests', 'color:#7cfead');
-      tests.forEach(t=> console.log((t.pass?'✅':'❌'), t.name));
+  // Attach a tiny link in Settings hint to set Savings PIN
+  (function injectSavingsPinLink(){
+    const hint = document.querySelector('#settings .hint');
+    if(hint){
+      hint.innerHTML = 'Parent PIN protects adding money, transfers (except Savings), taking loans, and changing savings settings. Only your parent should know it. <a href="#" id="sPinLink" style="color:#7cfead; font-weight:700">Set/Change Savings PIN</a>';
+      hint.querySelector('#sPinLink').addEventListener('click', (e)=>{ e.preventDefault(); quickSetSavingsPin(); });
     }
-    setTimeout(runTests, 300);
-
   })();
+
+  // --- Init: First run wording + render
+  function showFirstRun(){ $('#firstRun').classList.add('show'); }
+  function hideFirstRun(){ $('#firstRun').classList.remove('show'); }
+  $('#frSave').addEventListener('click', async ()=>{
+    const a=$('#frPin1').value.trim(), b=$('#frPin2').value.trim();
+    if(a.length!==4 || b.length!==4) return notify('PIN must be 4 digits','warn');
+    if(a!==b) return notify('PINs do not match','err');
+    await setPin(a); hideFirstRun(); confettiBurst(100); notify('PIN saved','ok');
+  });
+
+  render();
+  if(state.firstRun || !state.pinHash){ showFirstRun(); }
+  (function fixWords(){
+    const transferHint = document.querySelector('#transfer .hint'); if(transferHint) transferHint.textContent = 'Example: move from Physical → Digital when you hand cash to your parent and they pay with their card.';
+    const fr = document.querySelector('#firstRun p'); if(fr) fr.textContent = 'Set a 4‑digit PIN only your parent knows. You will need it to add money, move money, take loans, or change savings.';
+  })();
+
+  window.addEventListener('resize', ()=> renderCharts({from:$('#fromDate').value||null, to:$('#toDate').value||null}));
+  setTimeout(()=> renderCharts(), 0);
+
+  // tiny console test
+  try{ console.log('renderPresets exists:', typeof renderPresets==='function'?'✅':'❌'); }catch(e){}
+
+})();
 </script>
 </body>
 </html>
